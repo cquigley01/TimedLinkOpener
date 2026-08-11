@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Link Opener</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
+<style>
+  :root {
+    --bg: #f4f5f8;
+    --card: #ffffff;
+    --text: #1b1e24;
+    --muted: #69707d;
+    --border: #e1e4ea;
+    --accent: #4f6df5;
+    --accent-hover: #3d5ae8;
+    --accent-text: #ffffff;
+    --danger: #d64545;
+    --ok: #2e9e5b;
+    --warn: #c9821b;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --card: #181b21;
+      --text: #e8eaef;
+      --muted: #8b93a1;
+      --border: #2a2f39;
+      --accent: #6d87ff;
+      --accent-hover: #8399ff;
+      --accent-text: #0f1115;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  header h1 { margin: 0 0 4px; font-size: 26px; }
+  #clock { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+  header + p { margin: 0 0 24px; color: var(--muted); }
+  #popup-banner {
+    display: none;
+    background: var(--danger);
+    color: #fff;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+  textarea, input[type="datetime-local"] {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+  }
+  textarea:focus, input[type="datetime-local"]:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 72px; margin-bottom: 16px; }
+  .time-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .time-row input { flex: 1 1 220px; width: auto; }
+  .presets { display: flex; gap: 6px; }
+  button {
+    font: inherit;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 10px 18px;
+  }
+  .preset {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .preset:hover { color: var(--text); border-color: var(--accent); }
+  .primary { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .primary:hover { background: var(--accent-hover); }
+  .primary.small { padding: 6px 12px; font-size: 13px; }
+  .ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .ghost:hover { color: var(--danger); border-color: var(--danger); }
+  #form-error { color: var(--danger); font-size: 14px; margin-top: 10px; }
+  section h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+    margin: 0 0 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  .job {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .job-main { min-width: 0; }
+  .job-main a {
+    display: block;
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .job-main a:hover { color: var(--accent); }
+  .when { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .job-side { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .countdown { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  .countdown.soon { color: var(--accent); font-weight: 700; }
+  .badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    color: #fff;
+  }
+  .badge.opened { background: var(--ok); }
+  .badge.cancelled { background: var(--muted); }
+  .badge.missed { background: var(--warn); }
+  .badge.blocked { background: var(--danger); }
+  .offset { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 14px; padding: 6px 2px; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
+  footer ul { list-style: disc; padding-left: 20px; }
+  footer li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⏰ Link Opener</h1>
+    <div id="clock"></div>
+  </header>
+  <p>Opens links in new tabs at the exact time you choose — runs entirely in your browser.</p>
+
+  <div id="popup-banner">
+    Your browser blocked the new tab. Click the blocked-pop-up icon in the address bar,
+    choose “Always allow pop-ups from this site”, then press <b>Open now</b> below.
+  </div>
+
+  <form class="card" id="add-form">
+    <label for="urls">Links — one per line, all open at the same moment</label>
+    <textarea id="urls" placeholder="https://example.com&#10;https://news.ycombinator.com" spellcheck="false"></textarea>
+    <label for="time">Open at</label>
+    <div class="time-row">
+      <input type="datetime-local" id="time" step="1">
+      <div class="presets">
+        <button type="button" class="preset" data-secs="60">+1 min</button>
+        <button type="button" class="preset" data-secs="300">+5 min</button>
+        <button type="button" class="preset" data-secs="3600">+1 hr</button>
+      </div>
+    </div>
+    <button type="submit" class="primary">Schedule</button>
+    <div id="form-error"></div>
+  </form>
+
+  <section>
+    <h2>Upcoming</h2>
+    <ul id="pending-list"></ul>
+    <div class="empty" id="pending-empty">Nothing scheduled yet.</div>
+  </section>
+
+  <section>
+    <h2>History <button type="button" class="ghost" id="clear-btn">Clear</button></h2>
+    <ul id="done-list"></ul>
+    <div class="empty" id="done-empty">Nothing opened yet.</div>
+  </section>
+
+  <footer>
+    <ul>
+      <li>Keep this tab open (backgrounded is fine) — the links fire from this page.</li>
+      <li>The first time a link fires, your browser may block the pop-up. Allow pop-ups for this site once and every later link opens cleanly.</li>
+      <li>Timing is millisecond-exact while this tab is focused; browsers throttle background tabs, so expect up to a second of slack otherwise. The schedule is saved in this browser (localStorage).</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+'use strict';
+const $ = (sel) => document.querySelector(sel);
+const form = $('#add-form');
+const urlsInput = $('#urls');
+const timeInput = $('#time');
+const formError = $('#form-error');
+const popupBanner = $('#popup-banner');
+
+const KEY = 'link-opener-jobs';
+const GRACE_MS = 60000; // fire at most this late (e.g. after background throttling); later than this = missed
+
+let jobs = [];
+try { jobs = JSON.parse(localStorage.getItem(KEY)) || []; } catch {}
+let nextId = jobs.reduce((m, j) => Math.max(m, j.id), 0) + 1;
+let finePoll = null;
+let lastSig = '';
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(jobs)); } catch {}
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+
+function fmtLocal(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function fmtDate(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function fmtCountdown(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const parts = [];
+  if (s >= 86400) parts.push(Math.floor(s / 86400) + 'd');
+  if (s >= 3600) parts.push(Math.floor((s % 86400) / 3600) + 'h');
+  if (s >= 60) parts.push(Math.floor((s % 3600) / 60) + 'm');
+  parts.push((s % 60) + 's');
+  return 'in ' + parts.join(' ');
+}
+
+function normalizeUrl(raw) {
+  let s = String(raw).trim();
+  if (!s) return null;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = 'https://' + s;
+  let u;
+  try { u = new URL(s); } catch { return null; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  return u.href;
+}
+
+// Open in a new tab without giving the target page a handle back to us.
+// Returns false if the pop-up blocker stopped it.
+function openTab(url) {
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  try { w.opener = null; } catch {}
+  w.location = url;
+  return true;
+}
+
+function openJob(job) {
+  job.openedAt = Date.now();
+  job.openedOffset = job.openedAt - job.targetMs;
+  let blocked = false;
+  for (const url of job.urls) {
+    if (!openTab(url)) blocked = true;
+  }
+  job.status = blocked ? 'blocked' : 'opened';
+}
+
+function checkDue() {
+  const now = Date.now();
+  let changed = false;
+  for (const job of jobs) {
+    if (job.status !== 'pending' || job.targetMs > now) continue;
+    if (now - job.targetMs > GRACE_MS) job.status = 'missed';
+    else openJob(job);
+    changed = true;
+  }
+  if (changed) {
+    save();
+    render(true);
+  }
+}
+
+function jobRow(job, now) {
+  const li = document.createElement('li');
+  li.className = 'job';
+
+  const main = document.createElement('div');
+  main.className = 'job-main';
+  for (const u of job.urls) {
+    const a = document.createElement('a');
+    a.href = u;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = u;
+    main.appendChild(a);
+  }
+  const when = document.createElement('div');
+  when.className = 'when';
+  when.textContent = 'at ' + fmtDate(job.targetMs);
+  main.appendChild(when);
+
+  const side = document.createElement('div');
+  side.className = 'job-side';
+
+  if (job.status === 'pending') {
+    const remaining = job.targetMs - now;
+    const cd = document.createElement('span');
+    cd.className = 'countdown' + (remaining < 10000 ? ' soon' : '');
+    cd.textContent = fmtCountdown(remaining);
+    side.appendChild(cd);
+  } else {
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + job.status;
+    badge.textContent = job.status;
+    side.appendChild(badge);
+    if (job.status === 'opened') {
+      const off = document.createElement('span');
+      off.className = 'offset';
+      off.textContent = '+' + job.openedOffset + 'ms';
+      side.appendChild(off);
+    }
+  }
+
+  if (job.status === 'blocked') {
+    const openNow = document.createElement('button');
+    openNow.type = 'button';
+    openNow.className = 'primary small';
+    openNow.textContent = 'Open now';
+    openNow.addEventListener('click', () => {
+      openJob(job); // user-gesture context, so the pop-up blocker allows it
+      save();
+      render(true);
+    });
+    side.appendChild(openNow);
+  }
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ghost';
+  btn.textContent = job.status === 'pending' ? 'Cancel' : 'Remove';
+  btn.addEventListener('click', () => {
+    if (job.status === 'pending') job.status = 'cancelled';
+    else jobs = jobs.filter((j) => j !== job);
+    save();
+    render(true);
+  });
+  side.appendChild(btn);
+
+  li.appendChild(main);
+  li.appendChild(side);
+  return li;
+}
+
+function renderList(listEl, emptyEl, items, now) {
+  listEl.replaceChildren(...items.map((j) => jobRow(j, now)));
+  emptyEl.style.display = items.length ? 'none' : 'block';
+}
+
+// Rebuild the lists only when something visible changed (status flip or a
+// countdown ticking over a second) so buttons aren't yanked mid-click.
+function render(force) {
+  const now = Date.now();
+  const sig = jobs
+    .map((j) => j.id + j.status + (j.status === 'pending' ? Math.ceil((j.targetMs - now) / 1000) : ''))
+    .join('|');
+  if (!force && sig === lastSig) return;
+  lastSig = sig;
+
+  const pending = jobs
+    .filter((j) => j.status === 'pending')
+    .sort((a, b) => a.targetMs - b.targetMs);
+  const done = jobs
+    .filter((j) => j.status !== 'pending')
+    .sort((a, b) => (b.openedAt || b.targetMs) - (a.openedAt || a.targetMs));
+  renderList($('#pending-list'), $('#pending-empty'), pending, now);
+  renderList($('#done-list'), $('#done-empty'), done, now);
+  popupBanner.style.display = jobs.some((j) => j.status === 'blocked') ? 'block' : 'none';
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const lines = urlsInput.value.split('\n').map((s) => s.trim()).filter(Boolean);
+  try {
+    if (!lines.length) throw new Error('Add at least one link');
+    const urls = lines.map((line) => {
+      const u = normalizeUrl(line);
+      if (!u) throw new Error(`Not a valid http(s) link: "${line}"`);
+      return u;
+    });
+    if (!timeInput.value) throw new Error('Pick a time');
+    const targetMs = new Date(timeInput.value).getTime();
+    if (Number.isNaN(targetMs)) throw new Error('Could not read that time');
+    if (targetMs <= Date.now()) throw new Error('That time is in the past');
+    jobs.push({ id: nextId++, urls, targetMs, status: 'pending' });
+    urlsInput.value = '';
+    formError.textContent = '';
+    save();
+    render(true);
+  } catch (err) {
+    formError.textContent = err.message;
+  }
+});
+
+document.querySelectorAll('.preset').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    timeInput.value = fmtLocal(new Date(Date.now() + btn.dataset.secs * 1000));
+  });
+});
+
+$('#clear-btn').addEventListener('click', () => {
+  jobs = jobs.filter((j) => j.status === 'pending');
+  save();
+  render(true);
+});
+
+// --- clock engine ---
+// Browsers throttle timers in background tabs; a web worker keeps ticking
+// at full rate, and a visibilitychange check catches up the moment the tab
+// returns. When a fire is <2s away (and the tab is focused), a 5ms poll
+// lands the open on the exact millisecond.
+try {
+  const worker = new Worker(URL.createObjectURL(
+    new Blob(['setInterval(function () { postMessage(0); }, 250);'], { type: 'text/javascript' })
+  ));
+  worker.onmessage = checkDue;
+} catch {}
+
+setInterval(() => {
+  checkDue();
+  const soon = jobs.some((j) => j.status === 'pending' && j.targetMs - Date.now() < 2000);
+  if (soon && !finePoll) finePoll = setInterval(checkDue, 5);
+  else if (!soon && finePoll) { clearInterval(finePoll); finePoll = null; }
+  $('#clock').textContent = fmtDate(Date.now());
+  render();
+}, 250);
+
+document.addEventListener('visibilitychange', checkDue);
+
+timeInput.value = fmtLocal(new Date(Date.now() + 5 * 60 * 1000));
+$('#clock').textContent = fmtDate(Date.now());
+checkDue();
+render(true);
+</script>
+</body>
+</html>
