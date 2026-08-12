@@ -206,6 +206,10 @@
         <input type="number" id="secs" min="0" max="59" value="0" inputmode="numeric" aria-label="seconds">
         <span class="note">sec</span>
       </div>
+      <div class="secs-wrap">
+        <input type="number" id="millis" min="0" max="999" value="0" inputmode="numeric" aria-label="milliseconds">
+        <span class="note">ms</span>
+      </div>
       <div class="presets">
         <button type="button" class="preset" data-secs="60">+1 min</button>
         <button type="button" class="preset" data-secs="300">+5 min</button>
@@ -262,6 +266,7 @@ const form = $('#add-form');
 const urlsInput = $('#urls');
 const timeInput = $('#time');
 const secsInput = $('#secs');
+const millisInput = $('#millis');
 const fallbackInput = $('#fallback');
 const FALLBACK_KEY = 'link-opener-open-in-tab';
 const formError = $('#form-error');
@@ -375,7 +380,8 @@ function jobRow(job, now) {
   }
   const when = document.createElement('div');
   when.className = 'when';
-  when.textContent = 'at ' + fmtDate(job.targetMs);
+  const sub = job.targetMs % 1000;
+  when.textContent = 'at ' + fmtDate(job.targetMs) + (sub ? '.' + String(sub).padStart(3, '0') : '');
   main.appendChild(when);
 
   const side = document.createElement('div');
@@ -468,7 +474,8 @@ form.addEventListener('submit', (e) => {
     });
     if (!timeInput.value) throw new Error('Pick a time');
     const secs = Math.min(59, Math.max(0, Math.floor(Number(secsInput.value) || 0)));
-    const targetMs = new Date(timeInput.value).getTime() + secs * 1000;
+    const millis = Math.min(999, Math.max(0, Math.floor(Number(millisInput.value) || 0)));
+    const targetMs = new Date(timeInput.value).getTime() + secs * 1000 + millis;
     if (Number.isNaN(targetMs)) throw new Error('Could not read that time');
     if (targetMs <= Date.now()) throw new Error('That time is in the past');
     jobs.push({ id: nextId++, urls, targetMs, status: 'pending' });
@@ -486,6 +493,7 @@ document.querySelectorAll('.preset').forEach((btn) => {
     const t = new Date(Date.now() + btn.dataset.secs * 1000);
     timeInput.value = fmtLocalMin(t);
     secsInput.value = t.getSeconds();
+    millisInput.value = 0;
   });
 });
 
@@ -529,6 +537,7 @@ document.addEventListener('visibilitychange', checkDue);
 
 timeInput.value = fmtLocalMin(new Date(Date.now() + 5 * 60 * 1000));
 secsInput.value = 0;
+millisInput.value = 0;
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 if (isIOS) $('#ios-note').style.display = 'block';
