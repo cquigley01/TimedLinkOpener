@@ -87,6 +87,7 @@
     margin: 14px 0 0;
   }
   .fallback-row input { accent-color: var(--accent); }
+  .inline-check { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 400; color: var(--muted); }
   .btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .secondary {
     background: var(--bg);
@@ -224,6 +225,11 @@
       </button>
     </div>
     <div id="form-error"></div>
+    <div class="fallback-row">
+      <span>Re-open after the chosen time:</span>
+      <label class="inline-check"><input type="checkbox" id="repeat11"> 11 min</label>
+      <label class="inline-check"><input type="checkbox" id="repeat22"> 22 min</label>
+    </div>
     <label class="fallback-row">
       <input type="checkbox" id="fallback">
       If the pop-up is blocked, open the link in this tab instead (single-link entries)
@@ -268,6 +274,8 @@ const timeInput = $('#time');
 const secsInput = $('#secs');
 const millisInput = $('#millis');
 const fallbackInput = $('#fallback');
+const repeat11Input = $('#repeat11');
+const repeat22Input = $('#repeat22');
 const FALLBACK_KEY = 'link-opener-open-in-tab';
 const formError = $('#form-error');
 const popupBanner = $('#popup-banner');
@@ -478,7 +486,12 @@ form.addEventListener('submit', (e) => {
     const targetMs = new Date(timeInput.value).getTime() + secs * 1000 + millis;
     if (Number.isNaN(targetMs)) throw new Error('Could not read that time');
     if (targetMs <= Date.now()) throw new Error('That time is in the past');
-    jobs.push({ id: nextId++, urls, targetMs, status: 'pending' });
+    const offsets = [0];
+    if (repeat11Input.checked) offsets.push(11 * 60000);
+    if (repeat22Input.checked) offsets.push(22 * 60000);
+    for (const off of offsets) {
+      jobs.push({ id: nextId++, urls, targetMs: targetMs + off, status: 'pending' });
+    }
     urlsInput.value = '';
     formError.textContent = '';
     save();
